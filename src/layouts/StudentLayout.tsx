@@ -1,26 +1,24 @@
 import { useState } from "react";
 import Sidebar from "../components/SideBar";
+import { Outlet } from "react-router-dom";
 
 export default function StudentLayout() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
   return (
-    <div className="flex">
+    <div className="flex min-h-screen">
       <Sidebar
         isOpen={isSidebarOpen}
         setIsOpen={setIsSidebarOpen}
         userRole="estudiante"
-        assignedClasses={["Ciencias Naturales", "Matemáticas"]}
+        assignedClasses={[""]}
       />
       <main
         className={`flex-1 p-4 transition-all duration-300 ${
           isSidebarOpen ? "ml-64" : "ml-16"
         }`}
       >
-        <h1 className="text-2xl">Bienvenido, Estudiante</h1>
-        <p>
-          Aquí se mostrarán tus actividades y progreso en las clases asignadas.
-        </p>
+        <Outlet />
       </main>
     </div>
   );

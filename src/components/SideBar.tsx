@@ -2,12 +2,12 @@ import { JSX } from "react";
 import {
   FaBook,
   FaHistory,
-  FaBrain,
   FaCog,
   FaBars,
   FaUserCircle,
-  FaRobot,
   FaGlobeAmericas,
+  FaTachometerAlt,
+  FaSignOutAlt,
 } from "react-icons/fa";
 import { Link, useLocation } from "react-router-dom";
 
@@ -27,44 +27,15 @@ export default function Sidebar({
   const toggleSidebar = () => setIsOpen(!isOpen);
   const location = useLocation();
 
-  // Módulos por materia (solo estudiantes)
   const studentSubjects = [
     {
-      name: "Ciencias Naturales",
-      icon: <FaBrain className="text-2xl" />,
-      path: "/stu-ciens",
-    },
-    {
-      name: "Historia",
-      icon: <FaHistory className="text-2xl" />,
-      path: "/stu-hist",
-    },
-    {
-      name: "Educación Física",
-      icon: <FaBook className="text-2xl" />,
-      path: "/stu-edu-fis",
-    },
-    {
-      name: "Tecnología",
-      icon: <FaRobot className="text-2xl" />,
-      path: "/stu-tecno",
-    },
-    {
-      name: "Geografía",
-      icon: <FaGlobeAmericas className="text-2xl" />,
-      path: "/stu-geo",
-    },
-    {
-      name: "Matemáticas",
-      icon: <FaBook className="text-2xl" />,
-      path: "/stu-mate",
-    },
-    {
-      name: "ProfeBot",
-      icon: <FaRobot className="text-2xl" />,
-      path: "/stu-profebot",
+      name: "Dashboard",
+      icon: <FaTachometerAlt className="text-2xl" />,
+      path: "/student/dashboard",
     },
   ];
+
+  const profesorModules = [{}];
 
   const adminModules = [
     {
@@ -102,11 +73,22 @@ export default function Sidebar({
     estudiante: studentSubjects.filter((subject) =>
       assignedClasses.includes(subject.name)
     ),
-    profesor: [], // Puedes agregar módulos aquí si lo necesitas
+    profesor: [],
     administrador: adminModules,
   };
 
   const roleModules = modulesByRole[userRole] || [];
+
+  // Agregar "Mi progreso" al inicio para estudiantes
+  const studentProgressModule = {
+    name: "Mi progreso",
+    icon: <FaCog className="text-2xl" />,
+    path: "/student/dashboard",
+  };
+
+  if (userRole === "estudiante") {
+    roleModules.unshift(studentProgressModule); // Agregar "Mi progreso" al inicio
+  }
 
   return (
     <div
@@ -163,6 +145,14 @@ export default function Sidebar({
         <FaCog className="text-2xl" />
         {isOpen && <span className="text-base">Configuración</span>}
       </div>
+
+      <Link
+        to="/"
+        className="px-4 py-4 hover:bg-[#2c3e50] cursor-pointer flex items-center gap-4 text-red-400"
+      >
+        <FaSignOutAlt className="text-2xl" />
+        {isOpen && <span className="text-base">Salir</span>}
+      </Link>
     </div>
   );
 }

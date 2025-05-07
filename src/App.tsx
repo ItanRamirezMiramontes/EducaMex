@@ -11,6 +11,8 @@ import ClasesPageAdmin from "./pages/admin/clases";
 import InstitutionPageAdmin from "./pages/admin/institution";
 import ReportsPage from "./pages/admin/reports";
 import UsersPage from "./components/users";
+import DashBoardStudent from "./pages/student/DashBoardStudent";
+import DashBoardProfesor from "./pages/profesor/DashBoardProfesor";
 
 function App() {
   return (
@@ -20,13 +22,17 @@ function App() {
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
 
-        {/* Student routes */}
-        <Route path="/student/*" element={<StudentLayout />} />
+        {/* Rutas para estudiantes */}
+        <Route path="/student" element={<StudentLayout />}>
+          <Route path="dashboard" element={<DashBoardStudent />} />
+        </Route>
 
-        {/* Teacher routes */}
-        <Route path="/teacher/*" element={<TeacherLayout />} />
+        {/* Rutas para profesores */}
+        <Route path="/teacher" element={<TeacherLayout />}>
+          <Route path="dashboard" element={<DashBoardProfesor />} />
+        </Route>
 
-        {/* Admin routes (con Sidebar fijo) */}
+        {/* Rutas para administradores */}
         <Route path="/admin" element={<AdminLayout />}>
           <Route path="dashboard" element={<AdminDashboard />} />
           <Route path="clases" element={<ClasesPageAdmin />} />
