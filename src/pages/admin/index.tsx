@@ -7,9 +7,11 @@ import {
   query,
   where,
   getDocs,
+  startAt,
+  Timestamp,
 } from "firebase/firestore";
 import OverviewCard from "../../components/admin/OverviewCards/OverviewCard";
-import PerformanceChart from "../../components/admin/PerformanceChart/PerformanceChart";
+import ComparativeLineChart from "./components/ComparativeLineChart"; // Importamos el nuevo componente de gráfico
 import RecentActivity from "../../components/admin/RecentActivity/RecentActivity";
 import AlertsPanel from "../../components/admin/AlertsPanel/AlertsPanel";
 import QuickActions from "../../components/admin/AlertsPanel/QuickActions/QuickActions";
@@ -20,9 +22,11 @@ export default function AdminDashboard() {
   const [userData, setUserData] = useState<any>(null);
   const [institutionData, setInstitutionData] = useState<any>(null);
   const [usersCount, setUsersCount] = useState<number>(0);
+  const [classesCount, setClassesCount] = useState<number>(0); // Agregamos el contador de clases
+  const [newUsersData, setNewUsersData] = useState<number[]>([]);
+  const [newInstitutionsData, setNewInstitutionsData] = useState<number[]>([]);
 
-  const data = [12, 19, 3, 5, 2, 3]; // Datos para el gráfico de rendimiento
-  const labels = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio"]; // Etiquetas para el gráfico de rendimiento
+  const labels = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio"]; // Etiquetas para el gráfico
 
   const overviewData = [
     {
@@ -33,7 +37,7 @@ export default function AdminDashboard() {
     },
     {
       title: "Clases",
-      count: 30,
+      count: classesCount, // Mostramos el contador de clases
       description: "Total de clases creadas",
       icon: <i className="fas fa-chalkboard"></i>,
     },
@@ -67,16 +71,12 @@ export default function AdminDashboard() {
   useEffect(() => {
     const fetchData = async () => {
       if (auth.currentUser) {
-        // Obtener datos del usuario
         const userDocRef = doc(firestore, "users", auth.currentUser.uid);
         const userDoc = await getDoc(userDocRef);
         if (userDoc.exists()) {
           setUserData(userDoc.data());
-          console.log("Datos del usuario:", userDoc.data());
 
-          // Obtener los datos de la institución
           const institutionId = userDoc.data().institutionId;
-          console.log("institutionId del usuario:", institutionId);
           const institutionDocRef = doc(
             firestore,
             "institutions",
@@ -85,19 +85,54 @@ export default function AdminDashboard() {
           const institutionDoc = await getDoc(institutionDocRef);
           if (institutionDoc.exists()) {
             setInstitutionData(institutionDoc.data());
-            console.log("Datos de la institución:", institutionDoc.data());
 
-            // Obtener el número de usuarios con el mismo institutionId
-            const usersRef = collection(firestore, "users");
+            // Consultamos las clases del usuario según el institutionId
+            const classesRef = collection(firestore, "classes");
             const q = query(
-              usersRef,
+              classesRef,
               where("institutionId", "==", institutionId)
             );
             const querySnapshot = await getDocs(q);
+            setClassesCount(querySnapshot.size); // Contamos cuántas clases existen
 
-            // Verifica cuántos usuarios se encontraron
-            console.log("Número de usuarios encontrados:", querySnapshot.size);
-            setUsersCount(querySnapshot.size);
+            // Consultamos los usuarios asociados a esta institución
+            const usersRef = collection(firestore, "users");
+            const qUsers = query(
+              usersRef,
+              where("institutionId", "==", institutionId)
+            );
+            const usersSnapshot = await getDocs(qUsers);
+            setUsersCount(usersSnapshot.size);
+
+            // Obtener los usuarios nuevos por mes
+            const userMonthlyQuery = query(
+              usersRef,
+              where("createdAt", ">=", startAt(Timestamp.now()))
+            );
+            const monthlyUsersSnapshot = await getDocs(userMonthlyQuery);
+            const userMonthlyData: number[] = [];
+            monthlyUsersSnapshot.forEach((doc) => {
+              const createdAt = doc.data().createdAt?.toDate();
+              const month = createdAt?.getMonth(); // obtener el mes de la fecha
+              if (month !== undefined) {
+                userMonthlyData[month] = (userMonthlyData[month] || 0) + 1;
+              }
+            });
+            setNewUsersData(userMonthlyData);
+
+            // Obtener las instituciones nuevas por mes
+            const institutionsRef = collection(firestore, "institutions");
+            const institutionsSnapshot = await getDocs(institutionsRef);
+            const institutionMonthlyData: number[] = [];
+            institutionsSnapshot.forEach((doc) => {
+              const createdAt = doc.data().createdAt?.toDate();
+              const month = createdAt?.getMonth(); // obtener el mes de la fecha
+              if (month !== undefined) {
+                institutionMonthlyData[month] =
+                  (institutionMonthlyData[month] || 0) + 1;
+              }
+            });
+            setNewInstitutionsData(institutionMonthlyData);
           }
         }
       }
@@ -124,7 +159,7 @@ export default function AdminDashboard() {
       {showForm && (
         <div className="mt-6">
           <h2 className="text-xl font-bold mb-4">Crear nueva institución</h2>
-          <InstitutionForm />
+          <InstitutionForm closeForm={() => setShowForm(false)} />
         </div>
       )}
 
@@ -142,7 +177,11 @@ export default function AdminDashboard() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
-        <PerformanceChart data={data} labels={labels} />
+        <ComparativeLineChart
+          usersData={newUsersData}
+          institutionsData={newInstitutionsData}
+          labels={labels}
+        />
         <RecentActivity activities={recentActivities} />
       </div>
 
