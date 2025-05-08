@@ -1,8 +1,15 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { createUserWithEmailAndPassword } from "firebase/auth";
-import { doc, setDoc } from "firebase/firestore";
-import { auth, firestore } from "../firebase";
+import {
+  doc,
+  setDoc,
+  collection,
+  query,
+  where,
+  getDocs,
+} from "firebase/firestore";
+import { auth, firestore } from "../../backend/database/firebase";
 
 export default function RegisterPage() {
   const [email, setEmail] = useState("");
@@ -12,6 +19,7 @@ export default function RegisterPage() {
   const [lastName2, setLastName2] = useState("");
   const [phone, setPhone] = useState("");
   const [role, setRole] = useState("estudiante");
+  const [institutionName, setInstitutionName] = useState(""); // Nuevo campo para la institución
   const [error, setError] = useState("");
   const navigate = useNavigate();
 
@@ -20,6 +28,19 @@ export default function RegisterPage() {
     setError("");
 
     try {
+      // Verificar si la institución existe
+      const institutionsRef = collection(firestore, "institutions");
+      const q = query(institutionsRef, where("name", "==", institutionName));
+      const querySnapshot = await getDocs(q);
+
+      if (querySnapshot.empty) {
+        setError("La institución no existe.");
+        return; // Terminar la función si no existe la institución
+      }
+
+      const institutionId = querySnapshot.docs[0].id; // Obtener el ID de la institución
+
+      // Crear el usuario en Firebase Authentication
       const userCredential = await createUserWithEmailAndPassword(
         auth,
         email,
@@ -27,6 +48,7 @@ export default function RegisterPage() {
       );
       const uid = userCredential.user.uid;
 
+      // Crear documento de usuario en Firestore
       await setDoc(doc(firestore, "users", uid), {
         uid,
         name,
@@ -36,7 +58,7 @@ export default function RegisterPage() {
         phone,
         profilePicture: "",
         role,
-        institutionId: "",
+        institutionId, // Guardar el ID de la institución
         status: "activo",
         createdAt: new Date(),
         lastLogin: new Date(),
@@ -48,6 +70,7 @@ export default function RegisterPage() {
         },
       });
 
+      // Redirigir según el rol
       if (role === "estudiante") {
         navigate("/student");
       } else if (role === "profesor") {
@@ -215,6 +238,25 @@ export default function RegisterPage() {
               <option value="profesor">Profesor</option>
               <option value="administrador">Administrador</option>
             </select>
+          </div>
+
+          {/* Institución */}
+          <div>
+            <label
+              htmlFor="institution"
+              className="block text-sm font-medium text-gray-700"
+            >
+              Institución
+            </label>
+            <input
+              type="text"
+              id="institution"
+              placeholder="Nombre de la institución"
+              value={institutionName}
+              onChange={(e) => setInstitutionName(e.target.value)}
+              required
+              className="input-style"
+            />
           </div>
 
           {/* Botón */}

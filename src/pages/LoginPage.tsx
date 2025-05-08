@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { signInWithEmailAndPassword } from "firebase/auth";
 import { doc, getDoc } from "firebase/firestore";
-import { auth, firestore } from "../firebase";
+import { auth, firestore } from "../../backend/database/firebase";
 import Lottie from "lottie-react";
 
 export default function LoginPage() {
@@ -49,13 +49,13 @@ export default function LoginPage() {
 
         switch (userRole) {
           case "estudiante":
-            navigate("/student");
+            navigate("/student/dashboard");
             break;
           case "profesor":
-            navigate("/teacher");
+            navigate("/teacher/");
             break;
           case "administrador":
-            navigate("/admin");
+            navigate("/admin/dashboard");
             break;
           default:
             setError("Rol no válido.");

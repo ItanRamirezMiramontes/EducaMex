@@ -87,7 +87,7 @@ export default function Sidebar({
   };
 
   if (userRole === "estudiante") {
-    roleModules.unshift(studentProgressModule); // Agregar "Mi progreso" al inicio
+    roleModules.unshift(studentProgressModule);
   }
 
   return (
