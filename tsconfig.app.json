@@ -1,26 +1,28 @@
 {
   "compilerOptions": {
-    "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.app.tsbuildinfo",
-    "target": "ES2020",
-    "useDefineForClassFields": true,
-    "lib": ["ES2020", "DOM", "DOM.Iterable"],
-    "module": "ESNext",
-    "skipLibCheck": true,
-
-    /* Bundler mode */
-    "moduleResolution": "bundler",
-    "allowImportingTsExtensions": true,
-    "isolatedModules": true,
-    "moduleDetection": "force",
-    "noEmit": true,
-    "jsx": "react-jsx",
-
-    /* Linting */
-    "strict": true,
-    "noUnusedLocals": true,
-    "noUnusedParameters": true,
-    "noFallthroughCasesInSwitch": true,
-    "noUncheckedSideEffectImports": true
+    "jsx": "react",
+    "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.app.tsbuildinfo",  
+    "target": "ES2020",  // Compilación de TS a ES2020
+    "useDefineForClassFields": true,  // Usa `define` para los campos de clase.
+    "lib": ["ES2020", "DOM", "DOM.Iterable"],  // Bibliotecas necesarias para ES2020 y DOM.
+    "module": "ESNext",  // Uso de módulos ESNext.
+    "skipLibCheck": true,  // Mejora el rendimiento al no verificar las bibliotecas.
+    "moduleResolution": "bundler",  // Utiliza resolución de módulos para bundlers (Vite/Webpack).
+    "allowImportingTsExtensions": true,  // Permite importar archivos TS/TXS directamente.
+    "isolatedModules": true,  
+    "moduleDetection": "force",  
+    "noEmit": true,  
+    "jsx": "react-jsx", 
+    
+    // Opciones de Linting:
+    "strict": true,  
+    "noUnusedLocals": true, 
+    "noUnusedParameters": true,  
+    "noFallthroughCasesInSwitch": true,  
+    "noUncheckedSideEffectImports": true  
   },
-  "include": ["src", "backend/database/firebase.ts"]
+  "include": [
+    "src",  // Incluir todo el código en la carpeta src.
+    "backend/database/firebase.ts"  // Incluir el archivo firebase.ts de backend.
+  ]
 }

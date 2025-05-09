@@ -1,41 +1,80 @@
-import { JSX } from "react";
+import { useState, useEffect } from "react";
 import {
   FaBook,
-  FaHistory,
-  FaCog,
   FaBars,
   FaUserCircle,
-  FaGlobeAmericas,
-  FaTachometerAlt,
+  FaCog,
   FaSignOutAlt,
 } from "react-icons/fa";
 import { Link, useLocation } from "react-router-dom";
+import { firestore } from "../../backend/database/firebase"; // Usamos la instancia de firestore
+import { collection, getDocs } from "firebase/firestore"; // Importamos las funciones de firestore
+
+type ClassData = {
+  id: string;
+  name: string;
+  studentIds: string[];
+  teacherId: string;
+  institutionId: string;
+  room: string;
+};
 
 type SidebarProps = {
   isOpen: boolean;
   setIsOpen: (open: boolean) => void;
   userRole: string;
-  assignedClasses: string[];
+  userId: string;
 };
 
 export default function Sidebar({
   isOpen,
   setIsOpen,
   userRole,
-  assignedClasses,
+  userId,
 }: SidebarProps) {
+  const [classes, setClasses] = useState<ClassData[]>([]);
   const toggleSidebar = () => setIsOpen(!isOpen);
   const location = useLocation();
 
-  const studentSubjects = [
-    {
-      name: "Dashboard",
-      icon: <FaTachometerAlt className="text-2xl" />,
-      path: "/student/dashboard",
-    },
-  ];
+  useEffect(() => {
+    const fetchClasses = async () => {
+      try {
+        // Obtenemos las clases desde Firestore
+        const classesSnapshot = await getDocs(collection(firestore, "classes"));
+        const classesData: ClassData[] = [];
 
-  const profesorModules = [{}];
+        classesSnapshot.forEach((doc) => {
+          const data = doc.data();
+          const classData = {
+            id: doc.id,
+            name: data.name,
+            studentIds: data.studentIds,
+            teacherId: data.teacherId,
+            institutionId: data.institutionId,
+            room: data.room,
+          };
+          classesData.push(classData);
+        });
+
+        setClasses(classesData); // Guardamos las clases obtenidas en el estado
+      } catch (error) {
+        console.error("Error fetching classes from Firestore:", error);
+      }
+    };
+
+    fetchClasses(); // Llamamos a la función para obtener las clases desde Firebase
+  }, []);
+
+  // Filtrar las clases para que solo se muestren las que contienen el `userId` en el array de estudiantes
+  const filteredStudentClasses = classes.filter((cls) =>
+    cls.studentIds.includes(userId)
+  );
+
+  const studentSubjects = filteredStudentClasses.map((cls) => ({
+    name: cls.name,
+    icon: <FaBook className="text-2xl" />,
+    path: `/student/class/${cls.id}`,
+  }));
 
   const adminModules = [
     {
@@ -50,12 +89,12 @@ export default function Sidebar({
     },
     {
       name: "Institución",
-      icon: <FaGlobeAmericas className="text-2xl" />,
+      icon: <FaCog className="text-2xl" />,
       path: "/admin/institution",
     },
     {
       name: "Reportes",
-      icon: <FaHistory className="text-2xl" />,
+      icon: <FaCog className="text-2xl" />,
       path: "/admin/reports",
     },
     {
@@ -65,30 +104,34 @@ export default function Sidebar({
     },
   ];
 
-  // Normalización por rol
   const modulesByRole: Record<
     string,
-    { name: string; icon: JSX.Element; path: string }[]
+    { name: string; icon: React.ReactNode; path: string }[]
   > = {
-    estudiante: studentSubjects.filter((subject) =>
-      assignedClasses.includes(subject.name)
-    ),
-    profesor: [],
+    estudiante: [
+      {
+        name: "Mi progreso",
+        icon: <FaCog className="text-2xl" />,
+        path: "/student/dashboard",
+      },
+      ...studentSubjects,
+    ],
+    profesor: [
+      {
+        name: "Mis clases",
+        icon: <FaBook className="text-2xl" />,
+        path: "/teacher/classes",
+      },
+      {
+        name: "Reportes",
+        icon: <FaCog className="text-2xl" />,
+        path: "/teacher/reports",
+      },
+    ],
     administrador: adminModules,
   };
 
   const roleModules = modulesByRole[userRole] || [];
-
-  // Agregar "Mi progreso" al inicio para estudiantes
-  const studentProgressModule = {
-    name: "Mi progreso",
-    icon: <FaCog className="text-2xl" />,
-    path: "/student/dashboard",
-  };
-
-  if (userRole === "estudiante") {
-    roleModules.unshift(studentProgressModule);
-  }
 
   return (
     <div
