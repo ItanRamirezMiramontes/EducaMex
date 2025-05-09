@@ -1,4 +1,3 @@
-// src/pages/admin/institution/components/OverviewCard.tsx
 import React from "react";
 
 interface OverviewCardProps {

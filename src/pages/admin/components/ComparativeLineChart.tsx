@@ -1,4 +1,3 @@
-import React from "react";
 import { Line } from "react-chartjs-2";
 import {
   Chart as ChartJS,
@@ -11,7 +10,6 @@ import {
   Legend,
 } from "chart.js";
 
-// Registramos los componentes de Chart.js
 ChartJS.register(
   CategoryScale,
   LinearScale,
@@ -23,32 +21,43 @@ ChartJS.register(
 );
 
 interface ChartProps {
-  usersData: number[];
+  studentsData: number[];
+  professorsData: number[];
   institutionsData: number[];
+  usersData: number[];
   labels: string[];
 }
 
 const ComparativeLineChart: React.FC<ChartProps> = ({
-  usersData,
+  studentsData,
+  professorsData,
   institutionsData,
   labels,
 }) => {
   const data = {
-    labels: labels,
+    labels,
     datasets: [
       {
-        label: "Usuarios Nuevos",
-        data: usersData,
+        label: "Estudiantes Nuevos",
+        data: studentsData,
         borderColor: "rgba(75,192,192,1)",
         backgroundColor: "rgba(75,192,192,0.2)",
         fill: true,
         tension: 0.4,
       },
       {
+        label: "Profesores Nuevos",
+        data: professorsData,
+        borderColor: "rgba(153,102,255,1)",
+        backgroundColor: "rgba(153,102,255,0.2)",
+        fill: true,
+        tension: 0.4,
+      },
+      {
         label: "Instituciones Nuevas",
         data: institutionsData,
-        borderColor: "rgba(255,99,132,1)",
-        backgroundColor: "rgba(255,99,132,0.2)",
+        borderColor: "rgba(255,159,64,1)",
+        backgroundColor: "rgba(255,159,64,0.2)",
         fill: true,
         tension: 0.4,
       },
@@ -60,7 +69,7 @@ const ComparativeLineChart: React.FC<ChartProps> = ({
     plugins: {
       title: {
         display: true,
-        text: "Comparativa de Usuarios e Instituciones Nuevas",
+        text: "Comparativa de Nuevos Registros por Mes",
       },
     },
     scales: {

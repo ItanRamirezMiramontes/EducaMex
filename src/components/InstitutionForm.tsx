@@ -20,7 +20,6 @@ const InstitutionForm: React.FC<InstitutionFormProps> = ({ closeForm }) => {
 
   const [loading, setLoading] = useState(false);
 
-  // Función para crear la institución en Firestore
   const createInstitution = async (institutionData: {
     slug: string;
     theme: { primaryColor: string; secondaryColor: string; logoUrl: string };
