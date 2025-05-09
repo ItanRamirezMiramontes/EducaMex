@@ -1,4 +1,3 @@
-import { useState, useEffect } from "react";
 import {
   FaBook,
   FaBars,
@@ -7,17 +6,6 @@ import {
   FaSignOutAlt,
 } from "react-icons/fa";
 import { Link, useLocation } from "react-router-dom";
-import { firestore } from "../../backend/database/firebase"; // Usamos la instancia de firestore
-import { collection, getDocs } from "firebase/firestore"; // Importamos las funciones de firestore
-
-type ClassData = {
-  id: string;
-  name: string;
-  studentIds: string[];
-  teacherId: string;
-  institutionId: string;
-  room: string;
-};
 
 type SidebarProps = {
   isOpen: boolean;
@@ -26,55 +14,9 @@ type SidebarProps = {
   userId: string;
 };
 
-export default function Sidebar({
-  isOpen,
-  setIsOpen,
-  userRole,
-  userId,
-}: SidebarProps) {
-  const [classes, setClasses] = useState<ClassData[]>([]);
+export default function Sidebar({ isOpen, setIsOpen, userRole }: SidebarProps) {
   const toggleSidebar = () => setIsOpen(!isOpen);
   const location = useLocation();
-
-  useEffect(() => {
-    const fetchClasses = async () => {
-      try {
-        // Obtenemos las clases desde Firestore
-        const classesSnapshot = await getDocs(collection(firestore, "classes"));
-        const classesData: ClassData[] = [];
-
-        classesSnapshot.forEach((doc) => {
-          const data = doc.data();
-          const classData = {
-            id: doc.id,
-            name: data.name,
-            studentIds: data.studentIds,
-            teacherId: data.teacherId,
-            institutionId: data.institutionId,
-            room: data.room,
-          };
-          classesData.push(classData);
-        });
-
-        setClasses(classesData); // Guardamos las clases obtenidas en el estado
-      } catch (error) {
-        console.error("Error fetching classes from Firestore:", error);
-      }
-    };
-
-    fetchClasses(); // Llamamos a la función para obtener las clases desde Firebase
-  }, []);
-
-  // Filtrar las clases para que solo se muestren las que contienen el `userId` en el array de estudiantes
-  const filteredStudentClasses = classes.filter((cls) =>
-    cls.studentIds.includes(userId)
-  );
-
-  const studentSubjects = filteredStudentClasses.map((cls) => ({
-    name: cls.name,
-    icon: <FaBook className="text-2xl" />,
-    path: `/student/class/${cls.id}`,
-  }));
 
   const adminModules = [
     {
@@ -114,21 +56,42 @@ export default function Sidebar({
         icon: <FaCog className="text-2xl" />,
         path: "/student/dashboard",
       },
-      ...studentSubjects,
+      {
+        name: "Ciencias Naturales",
+        icon: <FaBook className="text-2xl" />,
+        path: "/student/clas",
+      },
     ],
     profesor: [
       {
         name: "Mis clases",
         icon: <FaBook className="text-2xl" />,
-        path: "/teacher/classes",
+        path: "/teacher/dashboard",
       },
+      {
+        name: "Gestionar tareas",
+        icon: <FaCog className="text-2xl" />,
+        path: "/teacher/task",
+      },
+      {
+        name: "Mis estudiantes",
+        icon: <FaUserCircle className="text-2xl" />,
+        path: "/teacher/student",
+      },
+
+      {
+        name: "Informe de rendimiento",
+        icon: <FaCog className="text-2xl" />,
+        path: "/teacher/my-class",
+      },
+
       {
         name: "Reportes",
         icon: <FaCog className="text-2xl" />,
         path: "/teacher/reports",
       },
     ],
-    administrador: adminModules,
+    administrador: adminModules, // No has especificado rutas para el administrador, por lo que queda igual
   };
 
   const roleModules = modulesByRole[userRole] || [];

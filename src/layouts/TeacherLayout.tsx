@@ -10,12 +10,12 @@ export default function TeacherLayout() {
       <Sidebar
         isOpen={isSidebarOpen}
         setIsOpen={setIsSidebarOpen}
-        userRole="estudiante"
-        assignedClasses={[""]}
+        userRole="profesor"
+        assignedClasses={[]}
       />
       <main
-        className={`flex-1 p-4 transition-all duration-300 ${
-          isSidebarOpen ? "ml-64" : "ml-16"
+        className={`flex-1 p-6 bg-gray-50 overflow-y-auto transition-all duration-300 ${
+          isSidebarOpen ? "ml-64" : "ml-20"
         }`}
       >
         <Outlet />
