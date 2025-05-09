@@ -22,11 +22,11 @@ export default function AdminDashboard() {
   const [userData, setUserData] = useState<any>(null);
   const [institutionData, setInstitutionData] = useState<any>(null);
   const [usersCount, setUsersCount] = useState<number>(0);
-  const [classesCount, setClassesCount] = useState<number>(0); // Agregamos el contador de clases
+  const [classesCount, setClassesCount] = useState<number>(0);
   const [newUsersData, setNewUsersData] = useState<number[]>([]);
   const [newInstitutionsData, setNewInstitutionsData] = useState<number[]>([]);
 
-  const labels = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio"]; // Etiquetas para el gráfico
+  const labels = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio"];
 
   const overviewData = [
     {
@@ -37,7 +37,7 @@ export default function AdminDashboard() {
     },
     {
       title: "Clases",
-      count: classesCount, // Mostramos el contador de clases
+      count: classesCount,
       description: "Total de clases creadas",
       icon: <i className="fas fa-chalkboard"></i>,
     },
@@ -70,71 +70,75 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     const fetchData = async () => {
-      if (auth.currentUser) {
-        const userDocRef = doc(firestore, "users", auth.currentUser.uid);
-        const userDoc = await getDoc(userDocRef);
-        if (userDoc.exists()) {
-          setUserData(userDoc.data());
+      try {
+        if (auth.currentUser) {
+          const userDocRef = doc(firestore, "users", auth.currentUser.uid);
+          const userDoc = await getDoc(userDocRef);
 
-          const institutionId = userDoc.data().institutionId;
-          const institutionDocRef = doc(
-            firestore,
-            "institutions",
-            institutionId
-          );
-          const institutionDoc = await getDoc(institutionDocRef);
-          if (institutionDoc.exists()) {
-            setInstitutionData(institutionDoc.data());
+          if (userDoc.exists()) {
+            setUserData(userDoc.data());
+            const institutionId = userDoc.data().institutionId;
 
-            // Consultamos las clases del usuario según el institutionId
-            const classesRef = collection(firestore, "classes");
-            const q = query(
-              classesRef,
-              where("institutionId", "==", institutionId)
+            const institutionDocRef = doc(
+              firestore,
+              "institutions",
+              institutionId
             );
-            const querySnapshot = await getDocs(q);
-            setClassesCount(querySnapshot.size); // Contamos cuántas clases existen
+            const institutionDoc = await getDoc(institutionDocRef);
 
-            // Consultamos los usuarios asociados a esta institución
-            const usersRef = collection(firestore, "users");
-            const qUsers = query(
-              usersRef,
-              where("institutionId", "==", institutionId)
-            );
-            const usersSnapshot = await getDocs(qUsers);
-            setUsersCount(usersSnapshot.size);
+            if (institutionDoc.exists()) {
+              setInstitutionData(institutionDoc.data());
 
-            // Obtener los usuarios nuevos por mes
-            const userMonthlyQuery = query(
-              usersRef,
-              where("createdAt", ">=", startAt(Timestamp.now()))
-            );
-            const monthlyUsersSnapshot = await getDocs(userMonthlyQuery);
-            const userMonthlyData: number[] = [];
-            monthlyUsersSnapshot.forEach((doc) => {
-              const createdAt = doc.data().createdAt?.toDate();
-              const month = createdAt?.getMonth(); // obtener el mes de la fecha
-              if (month !== undefined) {
-                userMonthlyData[month] = (userMonthlyData[month] || 0) + 1;
-              }
-            });
-            setNewUsersData(userMonthlyData);
+              // 🔍 CLASES
+              const classesRef = collection(firestore, "classes");
+              const q = query(
+                classesRef,
+                where("institutionId", "==", institutionId)
+              );
+              const querySnapshot = await getDocs(q);
+              console.log("Clases encontradas:", querySnapshot.size); // ✅
+              setClassesCount(querySnapshot.size);
 
-            // Obtener las instituciones nuevas por mes
-            const institutionsRef = collection(firestore, "institutions");
-            const institutionsSnapshot = await getDocs(institutionsRef);
-            const institutionMonthlyData: number[] = [];
-            institutionsSnapshot.forEach((doc) => {
-              const createdAt = doc.data().createdAt?.toDate();
-              const month = createdAt?.getMonth(); // obtener el mes de la fecha
-              if (month !== undefined) {
-                institutionMonthlyData[month] =
-                  (institutionMonthlyData[month] || 0) + 1;
-              }
-            });
-            setNewInstitutionsData(institutionMonthlyData);
+              // 🔍 USUARIOS
+              const usersRef = collection(firestore, "users");
+              const qUsers = query(
+                usersRef,
+                where("institutionId", "==", institutionId)
+              );
+              const usersSnapshot = await getDocs(qUsers);
+              setUsersCount(usersSnapshot.size);
+
+              // 🔍 NUEVOS USUARIOS
+              const userMonthlyData: number[] = new Array(6).fill(0);
+              usersSnapshot.forEach((doc) => {
+                const createdAt = doc.data().createdAt?.toDate();
+                const month = createdAt?.getMonth();
+                if (month !== undefined && month < 6) {
+                  userMonthlyData[month] += 1;
+                }
+              });
+              setNewUsersData(userMonthlyData);
+
+              // 🔍 INSTITUCIONES
+              const institutionsRef = collection(firestore, "institutions");
+              const institutionsSnapshot = await getDocs(institutionsRef);
+              const institutionMonthlyData: number[] = new Array(6).fill(0);
+              institutionsSnapshot.forEach((doc) => {
+                const createdAt = doc.data().createdAt?.toDate();
+                const month = createdAt?.getMonth();
+                if (month !== undefined && month < 6) {
+                  institutionMonthlyData[month] += 1;
+                }
+              });
+              setNewInstitutionsData(institutionMonthlyData);
+            }
           }
         }
+      } catch (error) {
+        console.error(
+          "Error cargando datos del panel de administrador:",
+          error
+        );
       }
     };
 
@@ -142,12 +146,19 @@ export default function AdminDashboard() {
   }, []);
 
   return (
-    <div className="p-6">
-      {institutionData && (
-        <h1 className="text-2xl font-bold">{institutionData.name}</h1>
-      )}
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Bienvenido {userData?.name}</h1>
+    <div className="p-6 space-y-6">
+      {/* Encabezado con nombre de la institución y saludo */}
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between space-y-2 md:space-y-0">
+        <div>
+          {institutionData && (
+            <h1 className="text-2xl font-bold text-gray-800">
+              {institutionData.name}
+            </h1>
+          )}
+          <h2 className="text-xl font-semibold text-gray-700">
+            Bienvenido {userData?.name}
+          </h2>
+        </div>
         <button
           onClick={() => setShowForm(true)}
           className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md shadow-md transition"
@@ -156,14 +167,16 @@ export default function AdminDashboard() {
         </button>
       </div>
 
+      {/* Formulario de creación */}
       {showForm && (
-        <div className="mt-6">
+        <div>
           <h2 className="text-xl font-bold mb-4">Crear nueva institución</h2>
           <InstitutionForm closeForm={() => setShowForm(false)} />
         </div>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-6">
+      {/* Tarjetas de resumen */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {overviewData.map((data, index) => (
           <OverviewCard
             key={index}
@@ -176,16 +189,21 @@ export default function AdminDashboard() {
         ))}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
-        <ComparativeLineChart
-          usersData={newUsersData}
-          institutionsData={newInstitutionsData}
-          labels={labels}
-        />
-        <RecentActivity activities={recentActivities} />
+      <div className="flex flex-col lg:flex-row gap-6 mt-6">
+        <div className="w-full lg:w-2/3">
+          <ComparativeLineChart
+            usersData={newUsersData}
+            institutionsData={newInstitutionsData}
+            labels={labels}
+          />
+        </div>
+        <div className="w-full lg:w-1/3">
+          <RecentActivity activities={recentActivities} />
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+      {/* Alertas y acciones rápidas */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <AlertsPanel alerts={alerts} />
         <QuickActions />
       </div>

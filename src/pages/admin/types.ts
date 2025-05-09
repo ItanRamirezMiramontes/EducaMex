@@ -17,5 +17,16 @@ export interface User {
     state?: string;
     street?: string;
     zip?: string;
+    
   }
+
+  export interface ClassItem {
+    studentCount?: number;
+  id: string;
+  name: string;
+  institutionId: string;
+  studentIds: string[];
+  teacherName: string;
+  room: string;
+}
   

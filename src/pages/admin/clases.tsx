@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   collection,
   getDocs,
@@ -8,36 +8,56 @@ import {
   where,
   getDoc,
   doc,
+  deleteDoc,
 } from "firebase/firestore";
-import { firestore } from "../../../backend/database/firebase";
-import { auth } from "../../../backend/database/firebase"; // Asegúrate de importar la autenticación de Firebase
-import { onAuthStateChanged } from "firebase/auth"; // Importar para obtener el usuario logueado
-import ClassList from "./components/ClassList";
-import ClassSummary from "./components/ClassSummary";
-import ClassProgressChart from "./components/ClassProgressChart";
-import ClassFilters from "./components/ClassFilters";
+import { firestore, auth } from "../../../backend/database/firebase";
+import { onAuthStateChanged } from "firebase/auth";
 import AddClassModal from "./components/AddClassModal";
+import AddStudentModal from "./components/AddStudentModal"; // Modal para agregar estudiante
+import ClassCard from "./components/ClassCard";
+import ClassSummary from "./components/ClassSummary";
+import ClassFilters from "./components/ClassFilters";
+import ClassInfoModal from "./components/ClassInfoModal"; // Importar el modal de información de clase
 
 type ClassItem = {
   id: string;
   name: string;
   teacherId: string;
+  teacherName: string;
   studentCount: number;
-  institutionId: string; // Agregar campo institutionId
+  studentsCount: number;
+  institutionId: string;
+  room: string;
+  studentIds: string[];
 };
 
 const ClasesPage: React.FC = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
+  const [isStudentModalOpen, setIsStudentModalOpen] = useState(false); // Estado para abrir el modal de agregar estudiante
+  const [isClassInfoModalOpen, setIsClassInfoModalOpen] = useState(false); // Estado para abrir el modal de información de la clase
   const [classes, setClasses] = useState<ClassItem[]>([]);
-  const [institutionId, setInstitutionId] = useState<string | null>(null); // Estado para almacenar institutionId
+  const [institutionId, setInstitutionId] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState<string>("");
+  const [selectedClassId, setSelectedClassId] = useState<string | null>(null); // Estado para guardar el ID de la clase seleccionada
+  const [modalMode, setModalMode] = useState<"add" | "view">("add"); // Añadido para controlar el tipo de modal
 
-  // Obtener el institutionId del usuario logueado
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
-        // Obtener el institutionId desde la base de datos o de un campo del usuario
-        setInstitutionId(user.uid); // Aquí se asume que el institutionId es igual al uid del usuario logueado
+        try {
+          const userDocRef = doc(firestore, "users", user.uid);
+          const userDoc = await getDoc(userDocRef);
+          if (userDoc.exists()) {
+            const data = userDoc.data();
+            if (data.institutionId) {
+              setInstitutionId(data.institutionId);
+            } else {
+              console.error("❌ El usuario no tiene institutionId");
+            }
+          }
+        } catch (error) {
+          console.error("❌ Error al obtener usuario:", error);
+        }
       }
     });
 
@@ -46,78 +66,105 @@ const ClasesPage: React.FC = () => {
 
   useEffect(() => {
     const fetchClasses = async () => {
-      const querySnapshot = await getDocs(collection(firestore, "classes"));
-      const fetchedClasses: ClassItem[] = [];
+      if (!institutionId) return;
 
-      querySnapshot.forEach((doc) => {
-        const data = doc.data();
-        fetchedClasses.push({
-          id: doc.id,
-          name: data.name || "",
-          teacherId: data.teacherId || "",
-          studentCount: data.studentIds?.length || 0,
-          institutionId: data.institutionId || "", // Asegúrate de que cada clase tenga un institutionId
+      try {
+        const q = query(
+          collection(firestore, "classes"),
+          where("institutionId", "==", institutionId)
+        );
+
+        const querySnapshot = await getDocs(q);
+        const fetched: ClassItem[] = [];
+
+        querySnapshot.forEach((doc) => {
+          const data = doc.data();
+          fetched.push({
+            id: doc.id,
+            name: data.name || "",
+            teacherId: data.teacherId || "",
+            teacherName: data.teacherName || "Desconocido",
+            studentCount: data.studentIds ? data.studentIds.length : 0,
+            studentsCount: data.studentIds ? data.studentIds.length : 0,
+            institutionId: data.institutionId,
+            room: data.room || "",
+            studentIds: data.studentIds || [],
+          });
         });
-      });
 
-      console.log("📥 Clases cargadas desde Firebase:", fetchedClasses);
-      setClasses(fetchedClasses);
+        setClasses(fetched);
+      } catch (error) {
+        console.error("❌ Error al obtener clases:", error);
+      }
     };
 
     fetchClasses();
-  }, []);
+  }, [institutionId]);
 
-  const handleAddClass = async (name: string, teacherId: string) => {
+  const handleAddClass = async (
+    name: string,
+    teacherId: string,
+    room: string
+  ) => {
     try {
-      if (!institutionId) {
-        console.error("❌ No se ha encontrado el institutionId");
-        return;
-      }
+      if (!institutionId) return;
 
-      // Verificar si el profesor existe y pertenece a la misma institución
-      const teacherDocRef = doc(firestore, "users", teacherId);
-      const teacherDoc = await getDoc(teacherDocRef);
-
-      if (!teacherDoc.exists()) {
-        console.error("❌ El profesor no existe.");
-        return;
-      }
+      const teacherDoc = await getDoc(doc(firestore, "users", teacherId));
+      if (!teacherDoc.exists()) return;
 
       const teacherData = teacherDoc.data();
-      const teacherInstitutionId = teacherData?.institutionId;
+      if (teacherData.institutionId !== institutionId) return;
 
-      if (teacherInstitutionId !== institutionId) {
-        console.error("❌ El profesor no pertenece a la misma institución.");
-        return;
-      }
-
-      // Si pasa la validación, agregamos la clase
       const newClass = {
         name,
         teacherId,
-        room: "",
+        room,
         createdAt: Timestamp.now(),
         studentIds: [],
-        schedule: {},
-        institutionId, // Agregar el institutionId
+        institutionId,
+        teacherName: teacherData.name || "Desconocido",
+        studentsCount: 0,
       };
 
       const docRef = await addDoc(collection(firestore, "classes"), newClass);
 
-      const addedClass: ClassItem = {
-        id: docRef.id,
-        name,
-        teacherId,
-        studentCount: 0,
-        institutionId, // Agregar el institutionId
-      };
-
-      setClasses((prev) => [...prev, addedClass]);
-
-      console.log("✅ Clase agregada exitosamente:", addedClass);
+      setClasses((prev) => [
+        ...prev,
+        {
+          id: docRef.id,
+          name,
+          teacherId,
+          studentCount: 0,
+          institutionId,
+          room,
+          studentIds: [],
+          teacherName: teacherData.name || "Desconocido",
+          studentsCount: 0,
+        },
+      ]);
     } catch (error) {
       console.error("❌ Error al agregar clase:", error);
     }
+  };
+
+  const handleDeleteClass = async (classId: string) => {
+    try {
+      await deleteDoc(doc(firestore, "classes", classId));
+      setClasses((prev) => prev.filter((c) => c.id !== classId));
+    } catch (error) {
+      console.error("❌ Error al eliminar clase:", error);
+    }
+  };
+
+  const handleViewClassInfo = (classId: string) => {
+    setSelectedClassId(classId);
+    setIsClassInfoModalOpen(true); // Abrir el modal de información de la clase
+  };
+
+  const handleAddStudent = (classId: string) => {
+    setSelectedClassId(classId);
+    setModalMode("add"); // Cambiar el modo a 'add' para "Agregar Estudiante"
+    setIsStudentModalOpen(true); // Abrir el modal
   };
 
   const filteredClasses = classes.filter((cls) =>
@@ -126,39 +173,93 @@ const ClasesPage: React.FC = () => {
 
   return (
     <div className="p-6">
-      <h1 className="text-2xl font-bold">Panel de Clases</h1>
+      <h1 className="text-2xl font-bold mb-4">Panel de Clases</h1>
 
       <ClassSummary
-        totalClasses={classes.length}
-        totalStudents={classes.reduce((acc, c) => acc + c.studentCount, 0)}
-        totalTeachers={new Set(classes.map((c) => c.teacherId)).size}
+        totalClasses={filteredClasses.length}
+        totalStudents={filteredClasses.reduce(
+          (acc, c) => acc + c.studentCount,
+          0
+        )}
+        totalTeachers={new Set(filteredClasses.map((c) => c.teacherId)).size}
       />
 
-      <ClassProgressChart
-        data={[12, 19, 3, 5, 2, 3]}
-        labels={["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio"]}
-      />
+      <ClassFilters searchQuery={searchQuery} setSearchQuery={setSearchQuery} />
 
-      <ClassFilters onFilter={setSearchQuery} />
-
-      <ClassList
-        classes={filteredClasses.map((cls) => ({
-          ...cls,
-          teacher: cls.teacherId,
-        }))}
-      />
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mt-4">
+        {filteredClasses.map((cls) => (
+          <ClassCard
+            key={cls.id}
+            classData={cls}
+            onDelete={handleDeleteClass}
+            onAddStudent={handleAddStudent}
+            onViewList={handleViewClassInfo} // Usar handleViewClassInfo para abrir el modal de clase
+          />
+        ))}
+      </div>
 
       <button
-        className="bg-blue-500 text-white p-2 rounded mt-6"
         onClick={() => setIsModalOpen(true)}
+        className="mt-6 bg-green-600 text-white px-6 py-2 rounded"
       >
-        Agregar Clase
+        + Nueva Clase
       </button>
 
       <AddClassModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         onAddClass={handleAddClass}
+        institutionId={institutionId}
+      />
+
+      {/* Modal para agregar estudiante */}
+      <AddStudentModal
+        isOpen={isStudentModalOpen}
+        onClose={() => setIsStudentModalOpen(false)}
+        onAdd={(studentId: string) => {
+          if (selectedClassId) {
+            setClasses((prev) =>
+              prev.map((cls) =>
+                cls.id === selectedClassId
+                  ? {
+                      ...cls,
+                      studentIds: [...cls.studentIds, studentId],
+                      studentCount: cls.studentCount + 1,
+                      studentsCount: cls.studentsCount + 1,
+                    }
+                  : cls
+              )
+            );
+          } else {
+            console.error("❌ No se ha seleccionado una clase");
+          }
+        }}
+        updateClassInState={(studentId: string) => {
+          if (selectedClassId) {
+            setClasses((prev) =>
+              prev.map((cls) =>
+                cls.id === selectedClassId
+                  ? {
+                      ...cls,
+                      studentIds: [...cls.studentIds, studentId],
+                      studentCount: cls.studentCount + 1,
+                      studentsCount: cls.studentsCount + 1,
+                    }
+                  : cls
+              )
+            );
+          }
+        }}
+        classId={selectedClassId || ""}
+        institutionId={institutionId || ""}
+        modalMode={modalMode}
+      />
+
+      {/* Modal para ver la información de la clase */}
+      <ClassInfoModal
+        isOpen={isClassInfoModalOpen}
+        onClose={() => setIsClassInfoModalOpen(false)}
+        classId={selectedClassId || ""}
       />
     </div>
   );

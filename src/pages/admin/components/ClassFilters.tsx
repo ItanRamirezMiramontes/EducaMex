@@ -1,20 +1,23 @@
-// src/components/ClassFilters.tsx
 import React from "react";
 
-interface ClassFiltersProps {
-  onFilter: (query: string) => void;
-}
+type ClassFiltersProps = {
+  searchQuery: string;
+  setSearchQuery: React.Dispatch<React.SetStateAction<string>>;
+};
 
-const ClassFilters: React.FC<ClassFiltersProps> = ({ onFilter }) => {
+const ClassFilters: React.FC<ClassFiltersProps> = ({
+  searchQuery,
+  setSearchQuery,
+}) => {
   return (
-    <div className="mb-6 flex justify-between items-center">
+    <div className="p-4">
       <input
         type="text"
-        placeholder="Buscar clase"
-        className="w-1/3 p-2 border border-gray-300 rounded"
-        onChange={(e) => onFilter(e.target.value)}
+        value={searchQuery}
+        onChange={(e) => setSearchQuery(e.target.value)}
+        placeholder="Buscar clase..."
+        className="w-full px-4 py-2 border rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
       />
-      <button className="bg-blue-500 text-white p-2 rounded">Filtrar</button>
     </div>
   );
 };
